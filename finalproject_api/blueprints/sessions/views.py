@@ -2,6 +2,7 @@ from flask import Flask, Blueprint, jsonify, make_response, request
 from werkzeug.security import check_password_hash
 from flask_jwt_extended import create_access_token
 from models.user import User
+from datetime import datetime, timedelta
 
 
 sessions_api_blueprint = Blueprint('sessions_api', __name__)
@@ -26,9 +27,10 @@ def new():
             'last_name':user.last_name,
             'email':user.email
         }
-        access_token = create_access_token(identity = user.id)
+        expires = timedelta(days=30)
+        access_token = create_access_token(identity = user.id, expires_delta=expires)
         response = {'message': 'Login successful', 'auth_token':access_token, 'user':user_details}
-        return make_response(jsonify(response),200)
+        return make_response(jsonify(response),201)
 
     else:
         response = {'message':'invalid password'}

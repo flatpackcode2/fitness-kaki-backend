@@ -1,24 +1,29 @@
 from flask import Flask, Blueprint, jsonify, make_response, request
 from werkzeug.security import check_password_hash
+from werkzeug.utils import secure_filename
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from models.event import Event
 from models.user import User
 from models.guestlist import Guestlist
 from flask_login import current_user
+from utils.im_helpers import upload_to_s3
 
 events_api_blueprint = Blueprint('events_api', __name__)
 
 @events_api_blueprint.route('/', methods=['POST'])
 @jwt_required
 def create():
-    name = request.json.get('name')
-    description = request.json.get('description')
-    location = request.json.get('location')
+    print('event_created')
+    name = request.form.get('name')
+    description = request.form.get('description')
+    location = request.form.get('location')
     host = get_jwt_identity()
-    time = request.json.get('time')
-    max_number= request.json.get('max_number')
-
-    event =Event(name=name, description=description, location=location, host=host, time=time, max_number=max_number)
+    time = request.form.get('time')
+    max_number= request.form.get('max_number')
+    image_file= request.files.get('image_file')
+    image_file.filename = secure_filename(image_file.filename)
+    output = upload_to_s3(file=image_file)
+    event =Event(name=name, description=description, location=location, host=host, time=time, max_number=max_number, event_image=image_file.filename)
 
     if event.save():
         print('event saved')
@@ -34,7 +39,7 @@ def create():
                     }}
         return make_response(jsonify(response), 200)
     else:
-        response = {'message': 'Event creation failed'}
+        response = {'message': 'Event creation failed', 'errors':event.errors}
         return make_response(jsonify(response), 400)
 
 #retrieve a list of all events
